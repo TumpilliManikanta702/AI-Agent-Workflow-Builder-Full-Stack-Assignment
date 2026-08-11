@@ -1,5 +1,4 @@
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_NHOST_GRAPHQL_URL || 'http://localhost:8080/v1/graphql';
-const GRAPHQL_WS_URL = process.env.NEXT_PUBLIC_NHOST_GRAPHQL_WS_URL || 'ws://localhost:8080/v1/graphql';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
 
 export async function executeGraphQL<T = any>(
   query: string,
@@ -15,15 +14,16 @@ export async function executeGraphQL<T = any>(
     headers['x-hasura-user-id'] = userId;
   }
 
-  const res = await fetch(GRAPHQL_URL, {
+  const res = await fetch(`${BACKEND_URL}/api/graphql`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ query, variables }),
   });
 
   const resJson = await res.json();
-  if (resJson.errors && resJson.errors.length > 0) {
-    throw new Error(resJson.errors[0].message || 'GraphQL Request Error');
+  if (!res.ok || (resJson.errors && resJson.errors.length > 0)) {
+    const errorMsg = resJson.errors?.[0]?.message || resJson.message || resJson.error || 'GraphQL Backend Error';
+    throw new Error(errorMsg);
   }
 
   return resJson.data;

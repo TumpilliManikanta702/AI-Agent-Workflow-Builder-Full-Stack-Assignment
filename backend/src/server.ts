@@ -17,6 +17,30 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'ai-agent-workflow-executor', timestamp: new Date().toISOString() });
 });
 
+// Secure GraphQL Proxy Endpoint for Frontend
+app.post('/api/graphql', extractHasuraAuthContext, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { query, variables } = req.body;
+    const userId = req.userId;
+
+    if (!query) {
+      return res.status(400).json({ message: 'BAD_REQUEST: query is required.' });
+    }
+
+    const headers: Record<string, string> = {};
+    if (userId) {
+      headers['x-hasura-role'] = 'user';
+      headers['x-hasura-user-id'] = userId;
+    }
+
+    const data = await hasuraGraphQLRequest(query, variables || {}, headers);
+    return res.json({ data });
+  } catch (err: any) {
+    console.error('[GraphQL API Route Error]:', err.message);
+    return res.status(400).json({ errors: [{ message: err.message }] });
+  }
+});
+
 // Hasura Action: triggerWorkflowRun
 app.post('/api/actions/trigger-workflow', extractHasuraAuthContext, async (req: AuthenticatedRequest, res) => {
   try {
