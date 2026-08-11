@@ -1,6 +1,5 @@
 const GRAPHQL_URL = process.env.NEXT_PUBLIC_NHOST_GRAPHQL_URL || 'http://localhost:8080/v1/graphql';
 const GRAPHQL_WS_URL = process.env.NEXT_PUBLIC_NHOST_GRAPHQL_WS_URL || 'ws://localhost:8080/v1/graphql';
-const ADMIN_SECRET = process.env.HASURA_GRAPHQL_ADMIN_SECRET || 'myadminsecretkey';
 
 export async function executeGraphQL<T = any>(
   query: string,
@@ -9,7 +8,6 @@ export async function executeGraphQL<T = any>(
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'x-hasura-admin-secret': ADMIN_SECRET,
   };
 
   if (userId) {
