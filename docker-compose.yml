@@ -1,0 +1,30 @@
+version: '3.6'
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  graphql-engine:
+    image: hasura/graphql-engine:v2.36.0
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    restart: always
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432/postgres
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+      HASURA_GRAPHQL_DEV_MODE: "true"
+      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, execution-log
+      HASURA_GRAPHQL_ADMIN_SECRET: myadminsecretkey
+      HASURA_GRAPHQL_UNAUTHORIZED_ROLE: anonymous
+
+volumes:
+  db_data:

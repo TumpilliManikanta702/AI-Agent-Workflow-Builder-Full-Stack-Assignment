@@ -1,0 +1,33 @@
+actions:
+  - name: triggerWorkflowRun
+    definition:
+      kind: synchronous
+      handler: http://localhost:4000/api/actions/trigger-workflow
+      forward_client_headers: true
+    permissions:
+      - role: user
+
+  - name: approveStep
+    definition:
+      kind: synchronous
+      handler: http://localhost:4000/api/actions/approve-step
+      forward_client_headers: true
+    permissions:
+      - role: user
+
+custom_types:
+  input_objects: []
+  objects:
+    - name: WorkflowRunOutput
+      fields:
+        - name: workflow_run_id
+          type: String!
+        - name: status
+          type: String!
+    - name: ApproveStepOutput
+      fields:
+        - name: step_run_id
+          type: String!
+        - name: status
+          type: String!
+  scalars: []
