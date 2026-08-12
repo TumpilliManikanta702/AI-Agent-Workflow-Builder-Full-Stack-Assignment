@@ -226,8 +226,8 @@ export default function WorkflowDetailPage() {
   if (!workflow) {
     return (
       <div className="max-w-md mx-auto my-12 p-6 bg-slate-900 border border-slate-800 rounded-2xl text-center space-y-3">
-        <h3 className="text-lg font-bold text-rose-400">Workflow Not Found or Unauthorized</h3>
-        <p className="text-xs text-slate-400">Hasura Row-Level Security prevented access to this workflow ID.</p>
+        <h3 className="text-lg font-bold text-rose-400">Workflow Not Found</h3>
+        <p className="text-xs text-slate-400">The requested workflow ID does not exist in the database or belongs to another organization.</p>
         <button onClick={() => router.push('/workflows')} className="px-4 py-2 bg-slate-800 rounded-xl text-xs font-semibold text-cyan-300">
           Back to Workflows
         </button>

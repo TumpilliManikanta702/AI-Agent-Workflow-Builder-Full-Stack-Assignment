@@ -32,6 +32,8 @@ app.post('/api/graphql', extractHasuraAuthContext, async (req: AuthenticatedRequ
       headers['x-hasura-user-id'] = userId;
     }
 
+    console.log(`[GraphQL Proxy] Processing request for userId: ${userId || 'anonymous'} | Query preview: ${query.trim().slice(0, 60)}...`);
+
     const data = await hasuraGraphQLRequest(query, variables || {}, headers);
     return res.json({ data });
   } catch (err: any) {
