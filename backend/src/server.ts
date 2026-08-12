@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { extractHasuraAuthContext, AuthenticatedRequest } from './middleware/auth';
 import { runWorkflowExecutionEngine, resumeWorkflowExecutionEngine } from './executor/index';
 import { hasuraGraphQLRequest } from './services/hasura';
+import { applyHasuraMetadata } from './services/metadata';
 dotenv.config();
 
 const app = express();
@@ -15,6 +16,16 @@ app.use(express.json());
 // Healthcheck
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'ai-agent-workflow-executor', timestamp: new Date().toISOString() });
+});
+
+// Admin Endpoint: Sync Hasura Metadata Relationships
+app.post('/api/metadata/sync', async (req, res) => {
+  const success = await applyHasuraMetadata();
+  if (success) {
+    return res.json({ message: 'Hasura metadata relationships synced successfully.' });
+  } else {
+    return res.status(500).json({ error: 'Failed to sync Hasura metadata.' });
+  }
 });
 
 // Secure GraphQL Proxy Endpoint for Frontend
@@ -129,4 +140,8 @@ app.post('/api/webhook/trigger', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Workflow Executor Backend running on port ${PORT}`);
+  // Sync Hasura Metadata Relationships on Startup
+  applyHasuraMetadata().catch((err) => {
+    console.error('[Startup Metadata Sync Error]:', err.message);
+  });
 });
