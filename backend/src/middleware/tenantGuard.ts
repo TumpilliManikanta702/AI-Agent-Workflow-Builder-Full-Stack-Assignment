@@ -50,7 +50,19 @@ export async function enforceMultiTenantIsolation(data: any, userId?: string, va
 
   // 1. Single workflow by primary key (workflows_by_pk)
   if (data.workflows_by_pk) {
-    const wfOrgId = data.workflows_by_pk.org_id;
+    let wfOrgId = data.workflows_by_pk.org_id;
+    if (!wfOrgId && data.workflows_by_pk.id) {
+      try {
+        const lookup = await hasuraGraphQLRequest(
+          `query LookupWfOrg($id: uuid!) { workflows_by_pk(id: $id) { org_id } }`,
+          { id: data.workflows_by_pk.id }
+        );
+        wfOrgId = lookup?.workflows_by_pk?.org_id;
+      } catch (e) {
+        // Ignore lookup error
+      }
+    }
+
     if (wfOrgId && !orgIds.includes(wfOrgId)) {
       console.warn(`[Proxy Tenant Security] Blocked cross-org access to workflow ${data.workflows_by_pk.id} for user ${userId}`);
       data.workflows_by_pk = null;
@@ -59,13 +71,28 @@ export async function enforceMultiTenantIsolation(data: any, userId?: string, va
 
   // 2. Workflows array (workflows)
   if (Array.isArray(data.workflows)) {
-    data.workflows = data.workflows.filter((wf: any) => {
-      if (wf.org_id && !orgIds.includes(wf.org_id)) {
-        console.warn(`[Proxy Tenant Security] Filtered cross-org workflow ${wf.id} for user ${userId}`);
-        return false;
+    const sanitizedWorkflows: any[] = [];
+    for (const wf of data.workflows) {
+      let wfOrgId = wf.org_id;
+      if (!wfOrgId && wf.id) {
+        try {
+          const lookup = await hasuraGraphQLRequest(
+            `query LookupWfOrg($id: uuid!) { workflows_by_pk(id: $id) { org_id } }`,
+            { id: wf.id }
+          );
+          wfOrgId = lookup?.workflows_by_pk?.org_id;
+        } catch (e) {
+          // Ignore lookup error
+        }
       }
-      return true;
-    });
+
+      if (wfOrgId && !orgIds.includes(wfOrgId)) {
+        console.warn(`[Proxy Tenant Security] Filtered cross-org workflow ${wf.id} for user ${userId}`);
+      } else {
+        sanitizedWorkflows.push(wf);
+      }
+    }
+    data.workflows = sanitizedWorkflows;
   }
 
   // 3. Single workflow run by primary key (workflow_runs_by_pk)

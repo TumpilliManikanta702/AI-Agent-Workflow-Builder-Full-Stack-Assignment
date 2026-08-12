@@ -53,9 +53,9 @@ export default function DashboardPage() {
       const result = await executeGraphQL(query, { wfId: targetWfId }, currentUser.id);
       
       if (!result.workflows_by_pk) {
-        setSecurityTestResult('✅ SECURITY PASSED: Hasura RLS blocked access! Returned null for cross-org workflow ID.');
+        setSecurityTestResult('SECURITY PASSED: Cross-org access blocked.');
       } else {
-        setSecurityTestResult('❌ SECURITY WARNING: Cross-org query returned data.');
+        setSecurityTestResult('SECURITY WARNING: Cross-org query returned data.');
       }
     } catch (err: any) {
       setSecurityTestResult(`✅ SECURITY PASSED: Access rejected with error: ${err.message}`);
