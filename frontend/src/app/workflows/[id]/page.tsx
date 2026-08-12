@@ -58,8 +58,15 @@ export default function WorkflowDetailPage() {
   const fetchWorkflowDetails = async () => {
     try {
       const data = await executeGraphQL(GET_WORKFLOW_DETAIL, { workflowId }, currentUser.id);
-      const wf = data.workflows_by_pk;
+      const wf = data?.workflows_by_pk;
       if (wf) {
+        // Application-level multi-tenant security check:
+        // Ensure the workflow belongs to the user's current organization
+        if (currentOrg?.id && wf.org_id && wf.org_id !== currentOrg.id) {
+          console.warn(`[Tenant Boundary Warning]: Workflow ${workflowId} belongs to org ${wf.org_id}, active org is ${currentOrg.id}`);
+          setWorkflow(null);
+          return;
+        }
         setWorkflow(wf);
         setSteps(wf.workflow_steps || []);
         setTriggers(wf.workflow_triggers || []);
@@ -70,17 +77,22 @@ export default function WorkflowDetailPage() {
             setActiveRunId(latest.id);
           }
         }
+      } else {
+        setWorkflow(null);
       }
     } catch (err: any) {
       console.error('[Fetch Workflow Detail Error]:', err);
+      setWorkflow(null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchWorkflowDetails();
-  }, [workflowId, currentUser.id]);
+    if (workflowId) {
+      fetchWorkflowDetails();
+    }
+  }, [workflowId, currentUser.id, currentOrg.id]);
 
   const handleRunWorkflow = async () => {
     setRunning(true);

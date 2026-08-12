@@ -10,7 +10,6 @@ export async function executeGraphQL<T = any>(
   };
 
   if (userId) {
-    headers['x-hasura-role'] = 'user';
     headers['x-hasura-user-id'] = userId;
   }
 
@@ -37,7 +36,6 @@ export async function actionTriggerWorkflowRun(workflowId: string, userId: strin
     headers: {
       'Content-Type': 'application/json',
       'x-hasura-user-id': userId,
-      'x-hasura-role': 'user',
     },
     body: JSON.stringify({
       input: {
@@ -62,7 +60,6 @@ export async function actionApproveStep(stepRunId: string, userId: string) {
     headers: {
       'Content-Type': 'application/json',
       'x-hasura-user-id': userId,
-      'x-hasura-role': 'user',
     },
     body: JSON.stringify({
       input: {
