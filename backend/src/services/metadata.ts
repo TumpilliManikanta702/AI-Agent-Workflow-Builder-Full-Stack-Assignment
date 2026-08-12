@@ -7,560 +7,207 @@ const ADMIN_SECRET = (process.env.HASURA_GRAPHQL_ADMIN_SECRET && process.env.HAS
   ? process.env.HASURA_GRAPHQL_ADMIN_SECRET.trim()
   : 'myadminsecretkey';
 
-export const HASURA_METADATA_PAYLOAD = {
-  type: 'replace_metadata',
-  version: 2,
-  args: {
-    allow_list: [],
-    metadata: {
-      version: 3,
-      sources: [
-        {
-          name: 'default',
-          kind: 'postgres',
-          configuration: {
-            connection_info: {
-              database_url: {
-                from_env: 'HASURA_GRAPHQL_DATABASE_URL'
-              },
-              isolation_level: 'read-committed',
-              use_prepared_statements: true
-            }
-          },
-          tables: [
-            {
-              table: { schema: 'public', name: 'organizations' },
-              array_relationships: [
-                {
-                  name: 'org_members',
-                  using: {
-                    foreign_key_constraint_on: {
-                      column: 'org_id',
-                      table: { schema: 'public', name: 'org_members' }
-                    }
-                  }
-                },
-                {
-                  name: 'workflows',
-                  using: {
-                    foreign_key_constraint_on: {
-                      column: 'org_id',
-                      table: { schema: 'public', name: 'workflows' }
-                    }
-                  }
-                }
-              ],
-              select_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    columns: ['id', 'name', 'usage_calls', 'usage_limit', 'created_at'],
-                    filter: {
-                      org_members: {
-                        user_id: { _eq: 'X-Hasura-User-Id' }
-                      }
-                    }
-                  }
-                }
-              ]
-            },
-            {
-              table: { schema: 'public', name: 'org_members' },
-              object_relationships: [
-                {
-                  name: 'organization',
-                  using: { foreign_key_constraint_on: 'org_id' }
-                }
-              ],
-              select_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    columns: ['id', 'org_id', 'user_id', 'role', 'created_at'],
-                    filter: {
-                      organization: {
-                        org_members: {
-                          user_id: { _eq: 'X-Hasura-User-Id' }
-                        }
-                      }
-                    }
-                  }
-                }
-              ]
-            },
-            {
-              table: { schema: 'public', name: 'workflows' },
-              object_relationships: [
-                {
-                  name: 'organization',
-                  using: { foreign_key_constraint_on: 'org_id' }
-                }
-              ],
-              array_relationships: [
-                {
-                  name: 'workflow_steps',
-                  using: {
-                    foreign_key_constraint_on: {
-                      column: 'workflow_id',
-                      table: { schema: 'public', name: 'workflow_steps' }
-                    }
-                  }
-                },
-                {
-                  name: 'workflow_triggers',
-                  using: {
-                    foreign_key_constraint_on: {
-                      column: 'workflow_id',
-                      table: { schema: 'public', name: 'workflow_triggers' }
-                    }
-                  }
-                },
-                {
-                  name: 'workflow_runs',
-                  using: {
-                    foreign_key_constraint_on: {
-                      column: 'workflow_id',
-                      table: { schema: 'public', name: 'workflow_runs' }
-                    }
-                  }
-                }
-              ],
-              select_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    columns: ['id', 'org_id', 'name', 'description', 'created_by', 'created_at', 'updated_at'],
-                    filter: {
-                      organization: {
-                        org_members: {
-                          user_id: { _eq: 'X-Hasura-User-Id' }
-                        }
-                      }
-                    }
-                  }
-                }
-              ],
-              insert_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    check: {
-                      organization: {
-                        org_members: {
-                          _and: [
-                            { user_id: { _eq: 'X-Hasura-User-Id' } },
-                            { role: { _in: ['owner', 'editor'] } }
-                          ]
-                        }
-                      }
-                    },
-                    columns: ['id', 'org_id', 'name', 'description', 'created_by']
-                  }
-                }
-              ],
-              update_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    columns: ['name', 'description', 'updated_at'],
-                    filter: {
-                      organization: {
-                        org_members: {
-                          _and: [
-                            { user_id: { _eq: 'X-Hasura-User-Id' } },
-                            { role: { _in: ['owner', 'editor'] } }
-                          ]
-                        }
-                      }
-                    }
-                  }
-                }
-              ],
-              delete_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    filter: {
-                      organization: {
-                        org_members: {
-                          _and: [
-                            { user_id: { _eq: 'X-Hasura-User-Id' } },
-                            { role: { _eq: 'owner' } }
-                          ]
-                        }
-                      }
-                    }
-                  }
-                }
-              ]
-            },
-            {
-              table: { schema: 'public', name: 'workflow_steps' },
-              object_relationships: [
-                {
-                  name: 'workflow',
-                  using: { foreign_key_constraint_on: 'workflow_id' }
-                }
-              ],
-              select_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    columns: ['id', 'workflow_id', 'name', 'step_order', 'type', 'config', 'created_at', 'updated_at'],
-                    filter: {
-                      workflow: {
-                        organization: {
-                          org_members: {
-                            user_id: { _eq: 'X-Hasura-User-Id' }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              ],
-              insert_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    check: {
-                      workflow: {
-                        organization: {
-                          org_members: {
-                            _and: [
-                              { user_id: { _eq: 'X-Hasura-User-Id' } },
-                              { role: { _in: ['owner', 'editor'] } }
-                            ]
-                          }
-                        }
-                      }
-                    },
-                    columns: ['id', 'workflow_id', 'name', 'step_order', 'type', 'config']
-                  }
-                }
-              ],
-              update_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    columns: ['name', 'step_order', 'type', 'config', 'updated_at'],
-                    filter: {
-                      workflow: {
-                        organization: {
-                          org_members: {
-                            _and: [
-                              { user_id: { _eq: 'X-Hasura-User-Id' } },
-                              { role: { _in: ['owner', 'editor'] } }
-                            ]
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              ],
-              delete_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    filter: {
-                      workflow: {
-                        organization: {
-                          org_members: {
-                            _and: [
-                              { user_id: { _eq: 'X-Hasura-User-Id' } },
-                              { role: { _in: ['owner', 'editor'] } }
-                            ]
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              ]
-            },
-            {
-              table: { schema: 'public', name: 'workflow_triggers' },
-              object_relationships: [
-                {
-                  name: 'workflow',
-                  using: { foreign_key_constraint_on: 'workflow_id' }
-                }
-              ],
-              select_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    columns: ['id', 'workflow_id', 'trigger_type', 'config', 'enabled', 'created_at'],
-                    filter: {
-                      workflow: {
-                        organization: {
-                          org_members: {
-                            user_id: { _eq: 'X-Hasura-User-Id' }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              ],
-              insert_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    check: {
-                      workflow: {
-                        organization: {
-                          org_members: {
-                            _and: [
-                              { user_id: { _eq: 'X-Hasura-User-Id' } },
-                              { role: { _in: ['owner', 'editor'] } }
-                            ]
-                          }
-                        }
-                      }
-                    },
-                    columns: ['id', 'workflow_id', 'trigger_type', 'config', 'enabled']
-                  }
-                }
-              ],
-              update_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    columns: ['trigger_type', 'config', 'enabled'],
-                    filter: {
-                      workflow: {
-                        organization: {
-                          org_members: {
-                            _and: [
-                              { user_id: { _eq: 'X-Hasura-User-Id' } },
-                              { role: { _in: ['owner', 'editor'] } }
-                            ]
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              ],
-              delete_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    filter: {
-                      workflow: {
-                        organization: {
-                          org_members: {
-                            _and: [
-                              { user_id: { _eq: 'X-Hasura-User-Id' } },
-                              { role: { _in: ['owner', 'editor'] } }
-                            ]
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              ]
-            },
-            {
-              table: { schema: 'public', name: 'workflow_runs' },
-              object_relationships: [
-                {
-                  name: 'workflow',
-                  using: { foreign_key_constraint_on: 'workflow_id' }
-                }
-              ],
-              array_relationships: [
-                {
-                  name: 'step_runs',
-                  using: {
-                    foreign_key_constraint_on: {
-                      column: 'workflow_run_id',
-                      table: { schema: 'public', name: 'step_runs' }
-                    }
-                  }
-                }
-              ],
-              select_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    columns: ['id', 'workflow_id', 'status', 'trigger_type', 'created_by', 'started_at', 'completed_at', 'error', 'created_at'],
-                    filter: {
-                      workflow: {
-                        organization: {
-                          org_members: {
-                            user_id: { _eq: 'X-Hasura-User-Id' }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              ]
-            },
-            {
-              table: { schema: 'public', name: 'step_runs' },
-              object_relationships: [
-                {
-                  name: 'workflow_run',
-                  using: { foreign_key_constraint_on: 'workflow_run_id' }
-                },
-                {
-                  name: 'workflow_step',
-                  using: { foreign_key_constraint_on: 'workflow_step_id' }
-                }
-              ],
-              select_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    columns: ['id', 'workflow_run_id', 'workflow_step_id', 'status', 'input', 'output', 'error', 'attempt_count', 'approved_by', 'approved_at', 'started_at', 'completed_at', 'created_at'],
-                    filter: {
-                      workflow_run: {
-                        workflow: {
-                          organization: {
-                            org_members: {
-                              user_id: { _eq: 'X-Hasura-User-Id' }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              ]
-            },
-            {
-              table: { schema: 'public', name: 'workflow_results' },
-              object_relationships: [
-                {
-                  name: 'workflow',
-                  using: { foreign_key_constraint_on: 'workflow_id' }
-                },
-                {
-                  name: 'workflow_run',
-                  using: { foreign_key_constraint_on: 'workflow_run_id' }
-                }
-              ],
-              select_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    columns: ['id', 'workflow_run_id', 'workflow_id', 'data', 'created_at'],
-                    filter: {
-                      workflow: {
-                        organization: {
-                          org_members: {
-                            user_id: { _eq: 'X-Hasura-User-Id' }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              ]
-            },
-            {
-              table: { schema: 'public', name: 'org_usage_monthly' },
-              object_relationships: [
-                {
-                  name: 'organization',
-                  using: {
-                    manual_configuration: {
-                      remote_table: { schema: 'public', name: 'organizations' },
-                      column_mapping: { org_id: 'id' }
-                    }
-                  }
-                }
-              ],
-              select_permissions: [
-                {
-                  role: 'user',
-                  permission: {
-                    columns: ['org_id', 'month', 'calls_used', 'calls_allowed', 'remaining'],
-                    filter: {
-                      organization: {
-                        org_members: {
-                          user_id: { _eq: 'X-Hasura-User-Id' }
-                        }
-                      }
-                    }
-                  }
-                }
-              ]
-            }
-          ]
+const RELATIONSHIP_OPERATIONS = [
+  // 1. workflows.organization (object)
+  {
+    type: 'pg_create_object_relationship',
+    args: {
+      source: 'default',
+      table: { schema: 'public', name: 'workflows' },
+      name: 'organization',
+      using: { foreign_key_constraint_on: 'org_id' }
+    }
+  },
+  // 2. workflows.workflow_steps (array)
+  {
+    type: 'pg_create_array_relationship',
+    args: {
+      source: 'default',
+      table: { schema: 'public', name: 'workflows' },
+      name: 'workflow_steps',
+      using: {
+        foreign_key_constraint_on: {
+          table: { schema: 'public', name: 'workflow_steps' },
+          column: 'workflow_id'
         }
-      ],
-      actions: [
-        {
-          name: 'triggerWorkflowRun',
-          definition: {
-            kind: 'synchronous',
-            handler: 'http://localhost:4000/api/actions/trigger-workflow',
-            forward_client_headers: true,
-            output_type: 'WorkflowRunOutput'
-          },
-          permissions: [{ role: 'user' }]
-        },
-        {
-          name: 'approveStep',
-          definition: {
-            kind: 'synchronous',
-            handler: 'http://localhost:4000/api/actions/approve-step',
-            forward_client_headers: true,
-            output_type: 'ApproveStepOutput'
-          },
-          permissions: [{ role: 'user' }]
-        }
-      ],
-      custom_types: {
-        objects: [
-          {
-            name: 'WorkflowRunOutput',
-            fields: [
-              { name: 'workflow_run_id', type: 'String!' },
-              { name: 'status', type: 'String!' }
-            ]
-          },
-          {
-            name: 'ApproveStepOutput',
-            fields: [
-              { name: 'step_run_id', type: 'String!' },
-              { name: 'status', type: 'String!' }
-            ]
-          }
-        ]
       }
     }
+  },
+  // 3. workflows.workflow_triggers (array)
+  {
+    type: 'pg_create_array_relationship',
+    args: {
+      source: 'default',
+      table: { schema: 'public', name: 'workflows' },
+      name: 'workflow_triggers',
+      using: {
+        foreign_key_constraint_on: {
+          table: { schema: 'public', name: 'workflow_triggers' },
+          column: 'workflow_id'
+        }
+      }
+    }
+  },
+  // 4. workflows.workflow_runs (array)
+  {
+    type: 'pg_create_array_relationship',
+    args: {
+      source: 'default',
+      table: { schema: 'public', name: 'workflows' },
+      name: 'workflow_runs',
+      using: {
+        foreign_key_constraint_on: {
+          table: { schema: 'public', name: 'workflow_runs' },
+          column: 'workflow_id'
+        }
+      }
+    }
+  },
+  // 5. workflow_runs.step_runs (array)
+  {
+    type: 'pg_create_array_relationship',
+    args: {
+      source: 'default',
+      table: { schema: 'public', name: 'workflow_runs' },
+      name: 'step_runs',
+      using: {
+        foreign_key_constraint_on: {
+          table: { schema: 'public', name: 'step_runs' },
+          column: 'workflow_run_id'
+        }
+      }
+    }
+  },
+  // 6. workflow_steps.workflow (object)
+  {
+    type: 'pg_create_object_relationship',
+    args: {
+      source: 'default',
+      table: { schema: 'public', name: 'workflow_steps' },
+      name: 'workflow',
+      using: { foreign_key_constraint_on: 'workflow_id' }
+    }
+  },
+  // 7. workflow_triggers.workflow (object)
+  {
+    type: 'pg_create_object_relationship',
+    args: {
+      source: 'default',
+      table: { schema: 'public', name: 'workflow_triggers' },
+      name: 'workflow',
+      using: { foreign_key_constraint_on: 'workflow_id' }
+    }
+  },
+  // 8. workflow_runs.workflow (object)
+  {
+    type: 'pg_create_object_relationship',
+    args: {
+      source: 'default',
+      table: { schema: 'public', name: 'workflow_runs' },
+      name: 'workflow',
+      using: { foreign_key_constraint_on: 'workflow_id' }
+    }
+  },
+  // 9. step_runs.workflow_run (object)
+  {
+    type: 'pg_create_object_relationship',
+    args: {
+      source: 'default',
+      table: { schema: 'public', name: 'step_runs' },
+      name: 'workflow_run',
+      using: { foreign_key_constraint_on: 'workflow_run_id' }
+    }
+  },
+  // 10. step_runs.workflow_step (object)
+  {
+    type: 'pg_create_object_relationship',
+    args: {
+      source: 'default',
+      table: { schema: 'public', name: 'step_runs' },
+      name: 'workflow_step',
+      using: { foreign_key_constraint_on: 'workflow_step_id' }
+    }
+  },
+  // 11. organizations.workflows (array)
+  {
+    type: 'pg_create_array_relationship',
+    args: {
+      source: 'default',
+      table: { schema: 'public', name: 'organizations' },
+      name: 'workflows',
+      using: {
+        foreign_key_constraint_on: {
+          table: { schema: 'public', name: 'workflows' },
+          column: 'org_id'
+        }
+      }
+    }
+  },
+  // 12. organizations.org_members (array)
+  {
+    type: 'pg_create_array_relationship',
+    args: {
+      source: 'default',
+      table: { schema: 'public', name: 'organizations' },
+      name: 'org_members',
+      using: {
+        foreign_key_constraint_on: {
+          table: { schema: 'public', name: 'org_members' },
+          column: 'org_id'
+        }
+      }
+    }
+  },
+  // 13. org_members.organization (object)
+  {
+    type: 'pg_create_object_relationship',
+    args: {
+      source: 'default',
+      table: { schema: 'public', name: 'org_members' },
+      name: 'organization',
+      using: { foreign_key_constraint_on: 'org_id' }
+    }
   }
-};
+];
 
 export async function applyHasuraMetadata(): Promise<boolean> {
   try {
-    console.log(`[Hasura Metadata Sync] Sending replace_metadata to ${METADATA_URL}...`);
-    const response = await fetch(METADATA_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-hasura-admin-secret': ADMIN_SECRET,
-      },
-      body: JSON.stringify(HASURA_METADATA_PAYLOAD),
-    });
+    console.log(`[Hasura Relationship Sync] Ensuring relationship metadata on ${METADATA_URL}...`);
+    let addedCount = 0;
+    let existingCount = 0;
+    let errorCount = 0;
 
-    const result = await response.json();
-    if (!response.ok || result.error) {
-      console.error('[Hasura Metadata Sync Error]:', JSON.stringify(result));
-      return false;
+    for (const op of RELATIONSHIP_OPERATIONS) {
+      try {
+        const response = await fetch(METADATA_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-hasura-admin-secret': ADMIN_SECRET,
+          },
+          body: JSON.stringify(op),
+        });
+
+        const result = await response.json();
+
+        if (response.ok && !result.code) {
+          addedCount++;
+        } else if (result.code === 'already-exists' || result.code === 'already-tracked') {
+          existingCount++;
+        } else {
+          console.warn(`[Hasura Relationship Warning] ${op.args.table.name}.${op.args.name}:`, result.error || result.message);
+          errorCount++;
+        }
+      } catch (opErr: any) {
+        console.error(`[Hasura Relationship Op Failed] ${op.args.table.name}.${op.args.name}:`, opErr.message);
+        errorCount++;
+      }
     }
 
-    console.log('[Hasura Metadata Sync Success]: All relationships & permissions tracked successfully.');
+    console.log(`[Hasura Relationship Sync Complete] Added: ${addedCount}, Existing: ${existingCount}, Errors: ${errorCount}`);
     return true;
   } catch (err: any) {
-    console.error('[Hasura Metadata Sync Exception]:', err.message);
+    console.error('[Hasura Relationship Sync Exception]:', err.message);
     return false;
   }
 }
