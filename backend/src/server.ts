@@ -5,6 +5,7 @@ import { extractHasuraAuthContext, AuthenticatedRequest } from './middleware/aut
 import { runWorkflowExecutionEngine, resumeWorkflowExecutionEngine } from './executor/index';
 import { hasuraGraphQLRequest } from './services/hasura';
 import { applyHasuraMetadata } from './services/metadata';
+import { enforceMultiTenantIsolation, validateWorkflowMutationTenant } from './middleware/tenantGuard';
 dotenv.config();
 
 const app = express();
@@ -38,6 +39,9 @@ app.post('/api/graphql', extractHasuraAuthContext, async (req: AuthenticatedRequ
       return res.status(400).json({ message: 'BAD_REQUEST: query is required.' });
     }
 
+    // Pre-execution mutation validation for multi-tenant boundary & role permission
+    await validateWorkflowMutationTenant(query, variables || {}, userId);
+
     const headers: Record<string, string> = {};
     if (userId) {
       headers['x-hasura-user-id'] = userId;
@@ -45,8 +49,11 @@ app.post('/api/graphql', extractHasuraAuthContext, async (req: AuthenticatedRequ
 
     console.log(`[GraphQL Proxy] Processing request for userId: ${userId || 'anonymous'} | Query preview: ${query.trim().slice(0, 60)}...`);
 
-    const data = await hasuraGraphQLRequest(query, variables || {}, headers);
-    return res.json({ data });
+    const rawData = await hasuraGraphQLRequest(query, variables || {}, headers);
+    
+    // Post-execution multi-tenant isolation enforcement
+    const securedData = await enforceMultiTenantIsolation(rawData, userId, variables || {});
+    return res.json({ data: securedData });
   } catch (err: any) {
     console.error('[GraphQL API Route Error]:', err.message);
     return res.status(400).json({ errors: [{ message: err.message }] });
