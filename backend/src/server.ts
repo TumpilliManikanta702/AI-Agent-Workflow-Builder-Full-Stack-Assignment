@@ -29,7 +29,6 @@ app.post('/api/graphql', extractHasuraAuthContext, async (req: AuthenticatedRequ
 
     const headers: Record<string, string> = {};
     if (userId) {
-      headers['x-hasura-role'] = 'user';
       headers['x-hasura-user-id'] = userId;
     }
 
